@@ -26,7 +26,7 @@ module APNS
       #
       #   Example Ruby implementation using event machine
       #     http://blog.technopathllc.com/2010/12/apples-push-notification-with-ruby.html
-      [1, id, 0, 32, self.device_token, pm.size, pm].pack("cNNnH*na*")
+      [1, id, 0, 32, self.device_token, pm.bytesize, pm].pack("cNNnH*na*")
     end
 
     def packaged_message
