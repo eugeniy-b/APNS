@@ -4,7 +4,6 @@ module APNS
   # to go through it.
   class ApnsLogger
     require 'logger'
-    require "ap"
 
     APP_NAME = "apns_lib"
     `mkdir -p log` # create a log directory if it does not exist
