@@ -21,7 +21,7 @@ module APNS
 
       apns_feedback = []
 
-      while data = sock.read(38)
+      while data = ssl.read(38)
         apns_feedback << self.parse_feedback_tuple(data)
       end
 
