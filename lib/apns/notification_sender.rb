@@ -48,9 +48,10 @@ module APNS
         state[:failures] << {
             :token => notifications[error[:notification_id]].device_token,
             :error => error
-        }
+        } if !error[:notification_id].nil?
         # start from the next notification in the array/queue
-        state[:start_point] = (error[:notification_id] + 1) #+1 because you want to start from the next notification
+        error[:notification_id] = 1
+        state[:start_point] = (error[:notification_id] + 1) if !error[:notification_id].nil? #+1 because you want to start from the next notification
         #note: the notifications array AND notification_id is 0 index based.
 
         # if the failure was at the last notification. There is no point continuing send_notifications as there are no
@@ -85,7 +86,7 @@ module APNS
           # start sending notifications
           for i in state[:start_point]..(notifications.size - 1)
             ssl.write(notifications[i].packaged_notification(i))
-            #sleep(1) #use this for testing the rescue Errno::EPIPE block. As when you only have a small number of notifications
+            # sleep(1) #use this for testing the rescue Errno::EPIPE block. As when you only have a small number of notifications
             #the rescue block never gets executed as it takes a while for the APNS to send a error
             #through the pipe and disconnect you.
           end

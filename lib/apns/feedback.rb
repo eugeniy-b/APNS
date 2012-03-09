@@ -23,16 +23,23 @@ module APNS
 
       apns_feedback = []
 
-      while line = sock.gets # Read lines from the socket
-        line.strip!
-        f = line.unpack('N1n1H140')
-        apns_feedback << [Time.at(f[0]), f[2]]
+      while data = sock.read(38)
+        apns_feedback << self.parse_feedback_tuple(data)
       end
 
       ssl.close
       sock.close
 
       return apns_feedback
+    end
+
+    def self.parse_feedback_tuple(data)
+      feedback = data.unpack('N1n1H*')
+      {
+        :feedback_at => Time.at(feedback[0]),
+        :length => feedback[1],
+        :device_token => feedback[2]
+      }
     end
   end
 end

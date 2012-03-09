@@ -12,7 +12,8 @@ module APNS
               :type        => raw_error[0],
               :code        => raw_error[1],
               :description => self.decode_apns_error_code(raw_error[1])
-          }
+          },
+          :data => data
       }
     end
 
