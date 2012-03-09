@@ -44,14 +44,14 @@ module APNS
       if error = error_code_handler.get_error_if_present(ssl)
         logger.warn "Error detected in continue_notification_sending?"
         logger.warn error
+        return false if error[:notification_id].nil? # we didn't get error message, just continue
         # record the failure to send this notification, that failed
         state[:failures] << {
             :token => notifications[error[:notification_id]].device_token,
             :error => error
-        } if !error[:notification_id].nil?
+        }
         # start from the next notification in the array/queue
-        error[:notification_id] = 1
-        state[:start_point] = (error[:notification_id] + 1) if !error[:notification_id].nil? #+1 because you want to start from the next notification
+        state[:start_point] = (error[:notification_id] + 1) #+1 because you want to start from the next notification
         #note: the notifications array AND notification_id is 0 index based.
 
         # if the failure was at the last notification. There is no point continuing send_notifications as there are no

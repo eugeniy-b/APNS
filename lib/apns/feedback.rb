@@ -7,12 +7,10 @@ module APNS
       context      = OpenSSL::SSL::SSLContext.new
       context.cert = OpenSSL::X509::Certificate.new(File.read(APNS::Config.pem))
       context.key  = OpenSSL::PKey::RSA.new(File.read(APNS::Config.pem), APNS::Config.pass)
-
       fhost        = APNS::Config.host.gsub!('gateway', 'feedback')
-      puts fhost
+      sock         = TCPSocket.new(fhost, 2196)
+      ssl          = OpenSSL::SSL::SSLSocket.new(sock, context)
 
-      sock = TCPSocket.new(fhost, 2196)
-      ssl  = OpenSSL::SSL::SSLSocket.new(sock, context)
       ssl.connect
 
       return sock, ssl
