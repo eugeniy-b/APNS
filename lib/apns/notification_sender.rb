@@ -44,25 +44,15 @@ module APNS
       if error = error_code_handler.get_error_if_present(ssl)
         logger.warn "Error detected in continue_notification_sending?"
         logger.warn error
-        return false if error[:notification_id].nil? # we didn't get error message, just continue
+        
         # record the failure to send this notification, that failed
         state[:failures] << {
-            :token => notifications[error[:notification_id]].device_token,
-            :error => error
-        }
-        # start from the next notification in the array/queue
-        state[:start_point] = (error[:notification_id] + 1) #+1 because you want to start from the next notification
-        #note: the notifications array AND notification_id is 0 index based.
-
-        # if the failure was at the last notification. There is no point continuing send_notifications as there are no
-        # more notifications left in the queue
-        return state[:start_point] < notifications.size
-      else
-
-        # if the execution came up to this point, we can assume that the for loop above executed without any errors.
-        # thus, all notifications that can be sent are sent. Signal send notifications to terminate the top most (one and only) while loop
-        return false
+          :token => notifications[error[:notification_id]].device_token,
+          :error => error
+        } if error[:notification_id]
       end
+
+      state[:start_point] < notifications.size
     end
 
     # send a batch of notifications. Uses the enhanced notification format. return a array with all errors encountered while
@@ -86,6 +76,7 @@ module APNS
           # start sending notifications
           for i in state[:start_point]..(notifications.size - 1)
             ssl.write(notifications[i].packaged_notification(i))
+            state[:start_point] += 1
             # sleep(1) #use this for testing the rescue Errno::EPIPE block. As when you only have a small number of notifications
             #the rescue block never gets executed as it takes a while for the APNS to send a error
             #through the pipe and disconnect you.
@@ -95,18 +86,18 @@ module APNS
             break
           end
 
-        rescue Errno::EPIPE => epipe_exception # this is the classic error when APNS drops the connection...
-          APNS::ApnsLogger.log.warn "EPIPE Exception in send_notifications"
-          APNS::ApnsLogger.log.warn epipe_exception
+        rescue Errno::EPIPE, Errno::ETIMEDOUT, Errno::ECONNRESET => exception # this is the classic error when APNS drops the connection...
+          APNS::ApnsLogger.log.warn "Connection exception in send_notifications"
+          APNS::ApnsLogger.log.warn exception
           # try to get the error message sent by the APNS. This should be present if the connection was
           # dropped by the APNS because of a error in a sent notification.
-          if !self.continue_notification_sending?(state, ssl, notifications)
-            break #if APNS didn't sent a error, we don't know what notifications got sent and what didn't. Just give up.
-          end
+          break unless self.continue_notification_sending?(state, ssl, notifications)
+            
         rescue Exception => exception # whatever other errors goes here
           APNS::ApnsLogger.log.fatal "Exception in send_notifications"
           APNS::ApnsLogger.log.fatal exception
           break #this is a unexpected situation. We don't know what notifications got sent and what didn't. so just giveup.
+        
         ensure # make sure we close the connections whatever happens
           #do a couple of checks to see if both ssl and sock are null.
           if ssl
