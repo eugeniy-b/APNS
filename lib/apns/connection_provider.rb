@@ -13,7 +13,23 @@ module APNS
 
       sock         = TCPSocket.new(APNS::Config.host, APNS::Config.port)
       ssl          = OpenSSL::SSL::SSLSocket.new(sock, context)
-      ssl.connect
+      ssl.sync = true
+
+      begin
+        ssl.connect_nonblock
+      rescue IO::WaitReadable
+        if IO.select([ssl], nil, nil, 5)
+          retry
+        else
+          raise
+        end
+      rescue IO::WaitWritable
+        if IO.select(nil, [ssl], nil, 5)
+          retry
+        else
+          raise
+        end
+      end
 
       return sock, ssl
     end

@@ -10,8 +10,23 @@ module APNS
       fhost        = APNS::Config.host.gsub!('gateway', 'feedback')
       sock         = TCPSocket.new(fhost, 2196)
       ssl          = OpenSSL::SSL::SSLSocket.new(sock, context)
+      ssl.sync = true
 
-      ssl.connect
+      begin
+        ssl.connect_nonblock
+      rescue IO::WaitReadable
+        if IO.select([ssl], nil, nil, 5)
+          retry
+        else
+          raise
+        end
+      rescue IO::WaitWritable
+        if IO.select(nil, [ssl], nil, 5)
+          retry
+        else
+          raise
+        end
+      end
 
       return sock, ssl
     end

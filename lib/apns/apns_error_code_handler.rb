@@ -62,7 +62,8 @@ module APNS
     #          }
     #      }
     def self.get_error_if_present ssl_connection
-      self.get_apns_error(ssl_connection.read) if self.connection_have_output? ssl_connection
+      self.get_apns_error(ssl_connection.read) if ssl_connection && self.connection_have_output?(ssl_connection)
+    rescue IOError
     end
   end
 end

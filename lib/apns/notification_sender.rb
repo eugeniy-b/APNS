@@ -44,7 +44,7 @@ module APNS
       if error = error_code_handler.get_error_if_present(ssl)
         logger.warn "Error detected in continue_notification_sending?"
         logger.warn error
-        
+
         # record the failure to send this notification, that failed
         state[:failures] << {
           :token => notifications[error[:notification_id]].device_token,
@@ -82,35 +82,23 @@ module APNS
             #through the pipe and disconnect you.
           end
 
-          if !self.continue_notification_sending?(state, ssl, notifications)
-            break
-          end
+        break unless self.continue_notification_sending?(state, ssl, notifications)
 
-        rescue Errno::EPIPE, Errno::ETIMEDOUT, Errno::ECONNRESET => exception # this is the classic error when APNS drops the connection...
+        rescue Errno::EPIPE, Errno::ETIMEDOUT, Errno::ECONNRESET, OpenSSL::SSL::SSLError, IOError => exception # this is the classic error when APNS drops the connection...
           APNS::ApnsLogger.log.warn "Connection exception in send_notifications"
           APNS::ApnsLogger.log.warn exception
           # try to get the error message sent by the APNS. This should be present if the connection was
           # dropped by the APNS because of a error in a sent notification.
           break unless self.continue_notification_sending?(state, ssl, notifications)
-            
+
         rescue Exception => exception # whatever other errors goes here
           APNS::ApnsLogger.log.fatal "Exception in send_notifications"
           APNS::ApnsLogger.log.fatal exception
           break #this is a unexpected situation. We don't know what notifications got sent and what didn't. so just giveup.
-        
-        ensure # make sure we close the connections whatever happens
-          #do a couple of checks to see if both ssl and sock are null.
-          if ssl
-            ssl.close
-          else
-            APNS::ApnsLogger.log.warn("ssl socket was null when trying to close it")
-          end
 
-          if sock
-            sock.close
-          else
-            APNS::ApnsLogger.log.warn("tcp socket was null when trying to close it")
-          end
+        ensure # make sure we close the connections whatever happens
+          ssl.close rescue nil
+          sock.close rescue nil
         end
       end
 
